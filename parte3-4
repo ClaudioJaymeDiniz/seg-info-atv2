@@ -1,0 +1,50 @@
+# 🛡️ Guia de Firewall - Parte 3 & 4: Bloqueio, Rejeição e Regras Contextuais
+
+---
+
+## 🚫 Parte 3: Bloqueio e Rejeição (Exercícios 10-12)
+
+Existem duas formas de barrar um tráfego: o **DROP/DENY** (o pacote simplesmente desaparece, causando *timeout* no remetente) e o **REJECT** (o firewall envia uma resposta educada dizendo que a porta está inacessível).
+
+### 10. Bloquear Porta (DROP/DENY) - MySQL (3306)
+O remetente não recebe resposta alguma. Ideal para esconder a existência do servidor de scanners de rede.
+* **UFW:** `sudo ufw deny 3306/tcp`
+* **iptables:** `sudo iptables -A INPUT -p tcp --dport 3306 -j DROP`
+
+### 11. Rejeitar Porta (REJECT) - PostgreSQL (5432)
+O remetente recebe um erro imediato (ICMP Port Unreachable). Útil em redes internas para evitar que aplicações fiquem "penduradas" esperando resposta.
+* **UFW:** `sudo ufw reject 5432/tcp`
+* **iptables:** `sudo iptables -A INPUT -p tcp --dport 5432 -j REJECT`
+
+### 12. Bloquear um IP Específico (Ex: 1.2.3.4)
+Banimento total de qualquer tentativa de conexão vinda de um endereço malicioso.
+* **UFW:** `sudo ufw deny from 1.2.3.4`
+* **iptables:** `sudo iptables -A INPUT -s 1.2.3.4 -j DROP`
+    * *Nota:* `-s` significa **Source** (origem).
+
+---
+
+## 🎯 Parte 4: Regras Contextuais (Exercícios 13-15)
+
+Aqui aplicamos o princípio do privilégio mínimo: liberar o acesso apenas para quem realmente precisa.
+
+### 13. Liberar Porta para um IP Específico (SSH)
+Permite que apenas o seu computador de trabalho (192.168.1.100) acesse o SSH.
+* **UFW:** `sudo ufw allow from 192.168.1.100 to any port 22 proto tcp`
+* **iptables:** `sudo iptables -A INPUT -p tcp -s 192.168.1.100 --dport 22 -j ACCEPT`
+
+### 14. Liberar Porta por Interface de Rede (MySQL)
+Cenário comum: O MySQL deve ser acessível pela rede interna (`eth1`), mas bloqueado pela internet (`eth0`).
+* **UFW:** `sudo ufw allow in on eth1 to any port 3306 proto tcp`
+* **iptables:** `sudo iptables -A INPUT -i eth1 -p tcp --dport 3306 -j ACCEPT`
+    * *Nota:* `-i` especifica a interface de entrada.
+
+### 15. Bloquear Pacotes Inválidos (Somente iptables)
+Pacotes "inválidos" são aqueles que não pertencem a nenhuma conexão conhecida (podem ser pacotes malformados ou ataques de inundação).
+* **iptables:**
+    ```bash
+    sudo iptables -A INPUT -m conntrack --ctstate INVALID -j DROP
+    ```
+    * *Explicação:* O módulo `conntrack` rastreia o estado da conexão. Se o estado for `INVALID`, o pacote é descartado imediatamente para proteger a CPU.
+
+---
