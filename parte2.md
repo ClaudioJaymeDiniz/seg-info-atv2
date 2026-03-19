@@ -1,7 +1,4 @@
 # 🛡️ Guia de Firewall - Parte 2: Liberação de Portas e Protocolos
-
-Nesta etapa do estudo, focamos na abertura seletiva de portas para serviços essenciais. O objetivo é manter a política padrão de "Bloquear Tudo" (**Deny/Drop**) e permitir apenas o tráfego necessário para o funcionamento das aplicações.
-
 ---
 
 ## 🌐 1. Serviços Web e Administração (TCP)
