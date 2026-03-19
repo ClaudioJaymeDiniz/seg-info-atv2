@@ -1,0 +1,73 @@
+# 🛡️ Guia de Firewall - Parte 5 & 6: Gestão, Segurança e NAT
+
+---
+
+## ⚙️ Parte 5: Gerenciamento de Regras (Exercícios 16-18)
+
+Manter o firewall organizado é essencial. À medida que as regras aumentam, saber listar e deletar itens específicos por índice economiza tempo e evita erros.
+
+### 16. Listar Regras com Números de Linha
+Útil para identificar exatamente qual posição uma regra ocupa na "pilha" de processamento.
+* **UFW:** `sudo ufw status numbered`
+* **iptables:** `sudo iptables -L INPUT -n --line-numbers`
+
+### 17. Deletar uma Regra por Número (Ex: Regra 5)
+Remove uma regra específica sem precisar digitar todo o comando que a criou.
+* **UFW:** `sudo ufw delete 5`
+* **iptables:** `sudo iptables -D INPUT 5`
+    * *Nota:* `-D` significa **Delete**.
+
+### 18. Resetar Tudo (Flush/Limpeza Total)
+Restaura o firewall ao estado "virgem", removendo todas as customizações.
+* **UFW:** `sudo ufw reset`
+* **iptables:**
+    ```bash
+    sudo iptables -P INPUT ACCEPT   # Define política padrão como permitir
+    sudo iptables -P FORWARD ACCEPT
+    sudo iptables -P OUTPUT ACCEPT
+    sudo iptables -t nat -F         # Limpa tabela NAT
+    sudo iptables -t mangle -F      # Limpa tabela Mangle
+    sudo iptables -F                # Limpa todas as regras (Flush)
+    sudo iptables -X                # Deleta cadeias personalizadas
+    ```
+
+---
+
+## 🚀 Parte 6: Nível Intermediário (Devs) (Exercícios 19-21)
+
+Configurações que protegem servidores expostos à internet e facilitam o deploy de apps.
+
+### 19. Rate Limiting (Proteção contra Força Bruta no SSH)
+Limita a frequência de conexões de um mesmo IP para evitar ataques de dicionário/senha.
+* **UFW:** `sudo ufw limit 22/tcp`
+    * *Explicação:* O UFW nega conexões de um IP que tentou 6 ou mais conexões em 30 segundos.
+* **iptables (Módulo Recent):**
+    ```bash
+    sudo iptables -A INPUT -p tcp --dport 22 -m state --state NEW -m recent --set
+    sudo iptables -A INPUT -p tcp --dport 22 -m state --state NEW -m recent --update --seconds 60 --hitcount 4 -j DROP
+    ```
+
+### 20. Logging (Registro de Tentativas no DB)
+Registra quem tentou acessar seu banco de dados (Ex: PostgreSQL 5432) antes de barrar o acesso.
+* **UFW:** `sudo ufw deny log 5432/tcp`
+* **iptables:**
+    ```bash
+    sudo iptables -A INPUT -p tcp --dport 5432 -j LOG --log-prefix "POSTGRES_ATTEMPT: "
+    sudo iptables -A INPUT -p tcp --dport 5432 -j DROP
+    ```
+
+### 21. NAT / Redirecionamento de Porta (Port Forwarding)
+Cenário: Sua API (Node.js/Python) roda na porta **8080**, mas você quer que o mundo a acesse pela porta padrão **80** (HTTP).
+* **UFW:** Requer edição manual no arquivo `/etc/ufw/before.rules`.
+* **iptables (Tabela NAT):**
+    ```bash
+    sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080
+    ```
+    * *Explicação:* `-t nat` acessa a tabela de tradução; `PREROUTING` intercepta o pacote antes de ele chegar ao destino final para mudar seu "rumo".
+
+---
+
+> **Importante:** Lembre-se de salvar suas regras de `iptables` com `sudo iptables-save > /etc/iptables/rules.v4` se estiver usando o pacote `iptables-persistent`, caso contrário, as regras serão perdidas no próximo reboot.
+
+---
+*Documentação Final - Claudio Jayme - FATEC Prof. Jessen Vidal.*
